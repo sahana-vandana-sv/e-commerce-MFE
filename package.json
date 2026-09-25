@@ -1,0 +1,9 @@
+{
+  "name": "e-commerce-mfe",
+  "private": true,
+  "packageManager": "pnpm@12.6.0",
+  "scripts": {
+    "start": "pnpm --parallel --recursive start",
+    "build": "pnpm --recursive build"
+  }
+}

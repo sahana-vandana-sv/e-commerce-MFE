@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "product-listing",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "product-listing", "start"],
+      "port": 4001
+    },
+    {
+      "name": "shell",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "shell", "start"],
+      "port": 4000
+    }
+  ]
+}
