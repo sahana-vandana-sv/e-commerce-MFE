@@ -4,13 +4,13 @@
     {
       "name": "product-listing",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "product-listing", "start"],
+      "runtimeArgs": ["nx", "serve", "product-listing"],
       "port": 4001
     },
     {
       "name": "shell",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "shell", "start"],
+      "runtimeArgs": ["nx", "serve", "shell"],
       "port": 4000
     }
   ]

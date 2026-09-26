@@ -18,7 +18,7 @@ Target architecture:
 - `apps/product-listing` — Remote MFE. Exposes a `ProductList` component. Runs its own React version.
 - `apps/cart` — Remote MFE. Exposes a `Cart` component. Reads data/events from `product-listing` and the shell's auth context.
 - `apps/checkout` — Remote MFE. Exposes a `Checkout` component. Deliberately pinned to a different React major version than the shell, to force real handling of multi-version React.
-- `packages/ui` — Shared component library (Button, Card, design tokens) consumed by shell + all remotes.
+- `packages/ui` (`@mfe/ui`) — Shared component library (Button, Card, design tokens) consumed by shell + all remotes. Source-only package (no build step; each app's babel-loader compiles it). Shared via Module Federation as a non-singleton.
 - `packages/shared-utils` — Shared non-UI utilities (formatting, event bus helpers, types).
 
 Start simple (plain Webpack host + one remote) and evolve into the full monorepo — don't scaffold everything on day one.
@@ -34,10 +34,12 @@ Start simple (plain Webpack host + one remote) and evolve into the full monorepo
 ## Repo conventions
 
 - Package manager: pnpm (workspace defined in `pnpm-workspace.yaml`; each app declares its own deps — no reliance on hoisting)
-- Monorepo tool: starts plain, migrates to Nx on Day 3 (see plan below)
+- Monorepo tool: Nx 23, used as a task runner over the pnpm workspace. Targets are inferred from each package's `package.json` scripts (`serve`, `build`); `nx.json` only adds caching and marks `serve` as continuous. We don't use Nx's MF generators — as of Nx 23 they only support Vite/Rsbuild/Rspack.
+- Module Federation: MF 2.0 runtime via `@module-federation/enhanced/webpack` (not webpack's built-in `container.ModuleFederationPlugin`). `dts: false` because the repo is JavaScript.
 - Dev ports: shell `4000`, product-listing `4001`, cart `4002`, checkout `4003` (3000 is avoided — clashes with other local Next.js projects)
-- Each app/package should be independently runnable (`nx serve <app>` or `npm start` from its folder) as well as runnable together via the host.
+- Each app/package should be independently runnable (`nx serve <app>`) as well as runnable together via the host.
 - Shared dependencies (`react`, `react-dom`) should be declared explicitly in each federation config's `shared` block — don't rely on implicit hoisting to paper over version issues.
+- Workspace packages in `shared` (e.g. `@mfe/ui`) need an explicit `requiredVersion` read from the package's own `package.json`. Apps depend on them via `workspace:*`, which MF would otherwise turn into `*` (accept any version).
 
 ## Seven-day learning plan
 
@@ -51,23 +53,29 @@ Use this as a checklist. Check off each day's build goal before moving on.
 
 ### Day 2 — Large-scale MFE architecture patterns (reading day)
 
-- [ ] Read and summarize: why orgs split into 100+ MFEs, and the 4 decision pillars (definition, composition, routing, communication)
-- Reference: https://martinfowler.com/articles/micro-frontends.html
-- List: https://github.com/ColinEberhardt/awesome-micro-frontends
+- [x] Read and summarize: why orgs split into 100+ MFEs, and the 4 decision pillars (definition, composition, routing, communication) → [docs/day-2-architecture-notes.md](docs/day-2-architecture-notes.md)
+- Mezzalira, MFE best practices (QCon London 2025): https://www.infoq.com/news/2025/04/microfrontend-best-practices
+- Mezzalira, migrating to MFEs (QCon SF 2025): https://infoq.com/news/2025/11/micro-frontends-migration-qcon
+- Book: Mezzalira, *Building Micro-Frontends*, 2nd ed. (O'Reilly, 2025)
+- Module Federation 2.0 stable (Feb 2026): https://module-federation.io/blog/v2-stable-version
+- Discovery at scale: https://github.com/awslabs/frontend-discovery
+- Background (2019, foundational): https://martinfowler.com/articles/micro-frontends.html
 
 ### Day 3 — Monorepo & shared module configuration
 
-- [ ] Migrate the project into an Nx monorepo
-- [ ] Extract a shared `packages/ui` library consumed by host + remote
-- Reference: https://github.com/hemantajax/mfe-react, https://github.com/JustalK/LABORATORY-MICROFRONTEND
-- Docs: https://nx.dev/docs/technologies/module-federation, https://nx.dev/docs/kb/react-micro-frontends
+- [x] Migrate the project into an Nx monorepo (hand-migrated: Nx 23 task runner + webpack + MF 2.0 `@module-federation/enhanced`)
+- [x] Extract a shared `packages/ui` library consumed by host + remote (`@mfe/ui`: `Button`, `Card`, `tokens`)
+- Nx 23 consumer/provider (replaces the deprecated host/remote generators; Vite/Rsbuild/Rspack only): https://nx.dev/docs/kb/consumer-and-provider
+- Nx shared library versions: https://nx.dev/docs/technologies/module-federation/concepts/manage-library-versions-with-module-federation
+- Docs: https://nx.dev/docs/technologies/module-federation, https://module-federation.io
 
 ### Day 4 — Navigation across MFEs
 
 - [ ] Add React Router in the shell; route-based lazy loading of remotes
 - [ ] Handle deep links correctly
-- Reference: "Advanced API" / "Dynamic Remotes" examples in module-federation-examples
-- Blog: https://h3manth.com/posts/dynamic-remotes-webpack-module-federation/
+- MF 2.0 runtime API (`registerRemotes` / `loadRemote`) — the pattern Nx 23 generates in `src/mf.ts`: https://module-federation.io
+- React Router integration across remotes (MF Bridge): https://module-federation.io/guide/bridge/react/load-app
+- Reference: "Dynamic Remotes" examples in module-federation-examples
 
 ### Day 5 — Data sharing across MFEs
 
@@ -80,33 +88,29 @@ Use this as a checklist. Check off each day's build goal before moving on.
 - [ ] Pin `checkout` to a different React major version than the shell
 - [ ] Get it rendering correctly without duplicate-React / invalid-hook errors
 - Key config: `shared` → `singleton`, `requiredVersion`, `strictVersion`; isolated `ReactDOM` root per remote when versions diverge
-- Reference: "Different React Versions" example in module-federation-examples
+- Watch out: `@mfe/ui` is shared in the `default` scope and bundles React 19's `react/jsx-runtime` wherever it's provided. A React 18 `checkout` must not pick up the shell's copy — plan for this (separate share scope, own copy, or Bridge).
+- 2026 first-party path: MF Bridge (`@module-federation/bridge-react`, `createBridgeComponent` / `createRemoteAppComponent`, React 16–19): https://module-federation.io/guide/bridge/react/getting-started — build it by hand first, then compare with Bridge
+- Reference: "Different React Versions" examples in module-federation-examples
 
 ### Day 7 — Bring it together + scale review
 
 - [ ] Full end-to-end run: shell + 3 remotes + shared lib + monorepo + routing + data sharing + mixed React versions
 - [ ] Write a short retro doc: what broke, what the #1 failure mode was (usually shared dependency mismatches), and how you'd document ownership boundaries for a real 100+ MFE org
 - Reference for scale/tooling patterns: https://github.com/module-federation/core
+- Resilience (retry plugin, `errorLoadRemote`, error boundaries): https://module-federation.io/blog/error-load-remote
 
 ## Useful commands
 
-Current (pre-Nx):
+Prefix with `pnpm` (e.g. `pnpm nx serve shell`) unless Nx is installed globally.
 
 ```bash
-pnpm install                          # install all workspace apps
-pnpm start                            # run every app's dev server in parallel
-pnpm --filter shell start             # host only → http://localhost:4000
-pnpm --filter product-listing start   # remote only → http://localhost:4001 (standalone)
-pnpm build                            # production build of every app into its dist/
-```
-
-After the Day 3 Nx migration (planned):
-
-```bash
-nx serve shell
-nx serve product-listing
-nx run-many --target=serve --projects=shell,product-listing,cart,checkout
-nx graph
+pnpm install                          # install all workspace packages
+pnpm start                            # = nx run-many -t serve (every app's dev server)
+nx serve shell                        # host only → http://localhost:4000
+nx serve product-listing              # remote only → http://localhost:4001 (standalone)
+pnpm build                            # = nx run-many -t build (cached)
+nx graph                              # build-time dependency graph (MF remotes don't appear: they're runtime-only)
+nx show projects --affected --files=packages/ui/src/Button.jsx   # what a ui change affects
 ```
 
 ## Do not

@@ -1,4 +1,5 @@
 import { version } from 'react';
+import { Button, Card, tokens } from '@mfe/ui';
 
 const products = [
   { id: 1, name: 'Wireless Headphones', price: 89.99 },
@@ -8,16 +9,20 @@ const products = [
 
 export default function ProductList() {
   return (
-    <section style={{ border: '2px dashed #4f46e5', padding: 16, borderRadius: 8 }}>
+    <section style={{ border: `2px dashed ${tokens.color.primary}`, padding: tokens.space.md, borderRadius: tokens.radius.md }}>
       <h2 style={{ marginTop: 0 }}>Products</h2>
-      <ul>
+      <div style={{ display: 'grid', gap: tokens.space.sm }}>
         {products.map((p) => (
-          <li key={p.id}>
-            {p.name} — ${p.price.toFixed(2)}
-          </li>
+          <Card key={p.id} title={p.name}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>${p.price.toFixed(2)}</span>
+              {/* Does nothing yet: the cart remote and event bus arrive on Day 5. */}
+              <Button>Add to cart</Button>
+            </div>
+          </Card>
         ))}
-      </ul>
-      <small>Rendered by product-listing remote · React {version}</small>
+      </div>
+      <small style={{ color: tokens.color.muted }}>Rendered by product-listing remote · React {version}</small>
     </section>
   );
 }

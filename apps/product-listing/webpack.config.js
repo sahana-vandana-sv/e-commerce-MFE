@@ -1,6 +1,9 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const { ModuleFederationPlugin } = require('webpack').container;
+const { ModuleFederationPlugin } = require('@module-federation/enhanced/webpack');
 const deps = require('./package.json').dependencies;
+// package.json says "workspace:*", which MF would read as "any version".
+// Use the ui package's real version instead.
+const uiVersion = require('@mfe/ui/package.json').version;
 
 module.exports = {
   entry: './src/index.js',
@@ -39,7 +42,12 @@ module.exports = {
       shared: {
         react: { singleton: true, requiredVersion: deps.react },
         'react-dom': { singleton: true, requiredVersion: deps['react-dom'] },
+        // Stateless UI kit: share it to avoid duplicate downloads, but not as a
+        // singleton. An app that needs an incompatible major gets its own copy.
+        '@mfe/ui': { requiredVersion: `^${uiVersion}` },
       },
+      // MF 2.0 generates TypeScript types for remotes by default; this repo is JS.
+      dts: false,
     }),
     new HtmlWebpackPlugin({ template: './public/index.html' }),
   ],

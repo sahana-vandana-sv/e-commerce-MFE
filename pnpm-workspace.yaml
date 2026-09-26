@@ -1,2 +1,8 @@
 packages:
   - apps/*
+  - packages/*
+
+# pnpm blocks dependency install scripts unless allowed here.
+allowBuilds:
+  # Nx's postinstall only updates the Nx Cloud client, which we don't use.
+  nx: false

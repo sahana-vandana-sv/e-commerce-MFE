@@ -3,7 +3,11 @@
   "private": true,
   "packageManager": "pnpm@12.6.0",
   "scripts": {
-    "start": "pnpm --parallel --recursive start",
-    "build": "pnpm --recursive build"
+    "start": "nx run-many -t serve",
+    "build": "nx run-many -t build",
+    "graph": "nx graph"
+  },
+  "devDependencies": {
+    "nx": "23.2.1"
   }
 }
